@@ -29,7 +29,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer f.Close()
-	walk(root, f, *flagSkipFiles)
+	skips := strings.Join(
+		[]string{
+			*flagSkipFiles,
+			*flagOutFile,
+		}, ",",
+	)
+	walk(root, f, skips)
 }
 
 func walk(root string, w io.Writer, skips string) {
@@ -44,17 +50,16 @@ func walk(root string, w io.Writer, skips string) {
 		defer f.Close()
 		body := md.RemoveHeader(f, "---")
 
-		fileinfo := fmt.Sprintf("\n*File: %s*\n---\n", info.Name())
-		_, err = w.Write([]byte(fileinfo))
-		if err != nil {
-			log.Println("error writing file info", err)
-		}
-
 		_, err = io.Copy(w, body)
 		if err != nil {
 			log.Println("error when copy file", err)
 		}
 
+		fileinfo := fmt.Sprintf("\n_File: %s_\n---\n", info.Name())
+		_, err = w.Write([]byte(fileinfo))
+		if err != nil {
+			log.Println("error writing file info", err)
+		}
 		return err
 	})
 }
