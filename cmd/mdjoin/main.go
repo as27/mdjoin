@@ -9,13 +9,29 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	"github.com/as27/mdjoin/pkg/md"
 )
 
 var (
-	flagOutFile   = flag.String("out", "document.md", "name of the output file")
-	flagSkipFiles = flag.String("skip", "", "comma separated list of filenames to skip")
+	flagOutFile    = flag.String("out", "document.md", "name of the output file")
+	flagSkipFiles  = flag.String("skip", "", "comma separated list of filenames to skip")
+	flagConfigFile = flag.String("conf", "", "use a yaml config file")
 )
+
+func config() {
+	viper.SetDefault("skip", *flagSkipFiles)
+	viper.SetDefault("out", *flagOutFile)
+	if *flagConfigFile != "" {
+		viper.SetConfigFile(*flagConfigFile)
+		viper.SetConfigType("yaml")
+		err := viper.ReadInConfig()
+		if err != nil {
+			log.Println("error reading config", err)
+		}
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -23,18 +39,16 @@ func main() {
 	if root == "" {
 		root = "./"
 	}
-	f, err := os.OpenFile(*flagOutFile, os.O_CREATE, 0777)
+	config()
+	outFile := viper.GetString("out")
+	skips := viper.GetString("skip")
+	f, err := os.OpenFile(outFile, os.O_CREATE, 0777)
 	if err != nil {
 		fmt.Println("cannot open output file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
-	skips := strings.Join(
-		[]string{
-			*flagSkipFiles,
-			*flagOutFile,
-		}, ",",
-	)
+	skips = fmt.Sprintf("%s,%s", skips, outFile)
 	walk(root, f, skips)
 }
 
